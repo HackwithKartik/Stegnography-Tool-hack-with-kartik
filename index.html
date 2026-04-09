@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Advanced Steganography Tool</title>
+
+<style>
+body {
+    background: #0d0d0d;
+    color: #00ffcc;
+    font-family: monospace;
+    text-align: center;
+}
+.container {
+    margin-top: 30px;
+}
+input, textarea {
+    padding: 10px;
+    margin: 10px;
+    width: 250px;
+    background: black;
+    color: #00ffcc;
+    border: 1px solid #00ffcc;
+}
+button {
+    padding: 10px 20px;
+    margin: 10px;
+    background: #00ffcc;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+button:hover {
+    background: #00ffaa;
+}
+h1 {
+    text-shadow: 0 0 10px #00ffcc;
+}
+#output {
+    margin-top: 20px;
+    color: white;
+}
+canvas {
+    display: none;
+}
+</style>
+
+</head>
+<body>
+
+<h1>🔐 Advanced Steganography Tool</h1>
+
+<div class="container">
+
+<input type="file" id="imageInput"><br>
+
+<textarea id="textInput" placeholder="Enter secret message"></textarea><br>
+
+<input type="password" id="password" placeholder="Enter password"><br>
+
+<button onclick="encode()">Encode</button>
+<button onclick="decode()">Decode</button><br>
+
+<a id="downloadLink" style="display:none;">Download Image</a>
+
+<div id="output"></div>
+
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+let img = new Image();
+
+document.getElementById('imageInput').addEventListener('change', function(e) {
+    let reader = new FileReader();
+    reader.onload = function(event) {
+        img.src = event.target.result;
+    }
+    reader.readAsDataURL(e.target.files[0]);
+});
+
+// Simple XOR encryption
+function encrypt(text, key) {
+    let result = "";
+    for (let i = 0; i < text.length; i++) {
+        result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+    }
+    return result;
+}
+
+function encode() {
+    let text = document.getElementById("textInput").value;
+    let password = document.getElementById("password").value;
+
+    if (!text || !password) {
+        alert("Text aur password dono daalo!");
+        return;
+    }
+
+    let encrypted = encrypt(text, password);
+
+    let canvas = document.getElementById("canvas");
+    let ctx = canvas.getContext("2d");
+
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+
+    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let data = imageData.data;
+
+    let binary = "";
+    for (let i = 0; i < encrypted.length; i++) {
+        binary += encrypted.charCodeAt(i).toString(2).padStart(8, '0');
+    }
+    binary += "1111111111111110";
+
+    for (let i = 0; i < binary.length; i++) {
+        data[i] = (data[i] & 254) | binary[i];
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    let link = document.getElementById("downloadLink");
+    link.href = canvas.toDataURL();
+    link.download = "secret.png";
+    link.style.display = "block";
+    link.innerText = "Download Encoded Image";
+
+    document.getElementById("output").innerText = "✅ Message encoded successfully!";
+}
+
+function decode() {
+    let password = document.getElementById("password").value;
+
+    if (!password) {
+        alert("Password daalo decode ke liye!");
+        return;
+    }
+
+    let canvas = document.getElementById("canvas");
+    let ctx = canvas.getContext("2d");
+
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+
+    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let data = imageData.data;
+
+    let binary = "";
+    for (let i = 0; i < data.length; i++) {
+        binary += (data[i] & 1);
+    }
+
+    let chars = [];
+    for (let i = 0; i < binary.length; i += 8) {
+        let byte = binary.substr(i, 8);
+        if (byte === "11111111") break;
+        chars.push(String.fromCharCode(parseInt(byte, 2)));
+    }
+
+    let encrypted = chars.join('');
+    let decrypted = encrypt(encrypted, password);
+
+    document.getElementById("output").innerText = "🔓 Decoded: " + decrypted;
+}
+</script>
+
+</body>
+</html>
